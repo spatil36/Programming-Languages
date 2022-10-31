@@ -16,8 +16,17 @@ employees([ employee(tom, 33, cs, 85000.00),
 % dept_employees(Employees, Dept, DeptEmployees): Given a list
 % Employees of employees and a department Dept match DeptEmployees
 % to the subsequence of Employees having department Dept.
-dept_employees(Employees, Dept, DeptEmployees) :-
-    'TODO'(Employees, Dept, DeptEmployees).
+
+dept_employees([], _, []).
+dept_employees(Employees, Dept, DeptEmployees):-
+    Employees = [Head|Tail],
+    Head = employee(_, _, Dept, _),
+    DeptEmployees = [Head|Ts],
+    dept_employees(Tail, Dept, Ts).
+dept_employees(Employees, Dept, DeptEmployees):-
+    Employees = [Head|Tail],
+    Head \= employee(_, _, Dept, _),
+    dept_employees(Tail, Dept, DeptEmployees).
 
 
 :- begin_tests(dept_employees, []).
@@ -41,17 +50,28 @@ test(dept_employees_ce, all(Zs = [[]])) :-
 %%% #2 15-points
 % employees_salary_sum(Employees, Sum): succeeds iff Sum matches sum
 % of salaries of the employees in Employees.  Must be tail-recursive.
-employees_salary_sum(Employees, Sum) :- 'TODO'(Employees, Sum).
+
+employees_salary_sum(Employees, Sum):-
+     employees_salary_sum(Employees, 0, Sum).
+
+employees_salary_sum([], Acc1, Acc1).
+
+employees_salary_sum(Employees, Acc, Sum) :-
+    Employees = [H|T],
+    H = employee(_, _, _, Salary),
+    Acc1 is Salary + Acc,
+    employees_salary_sum(T, Acc1, Sum).
+
 
 :-begin_tests(employees_salary_sum).
 test(empty) :-
     employees_salary_sum([], 0).
 test(seq_salaries) :-
     Employees = [
-	employee(_, _, _, 1), 
-	employee(_, _, _, 2), 
-	employee(_, _, _, 3), 
-	employee(_, _, _, 4), 
+	employee(_, _, _, 1),
+	employee(_, _, _, 2),
+	employee(_, _, _, 3),
+	employee(_, _, _, 4),
 	employee(_, _, _, 5)
     ],
     employees_salary_sum(Employees, 15).
@@ -67,7 +87,24 @@ test(all) :-
 % an abitrary depth, match Z with the element in List indexed
 % successively by the indexes in Indexes. Match Z with the atom nil if
 % there is no such element.
-list_access(Indexes, List, Z) :- 'TODO'(Indexes, List, Z).
+
+list_access([], List, List).
+
+list_access(Indexes, List, Z):-
+     Indexes = [Head|Tail],
+     List = [_LHead|LTail],
+     Head > 0,
+     AccIndx1 is Head - 1,
+     list_access([AccIndx1|Tail], LTail, Z).
+
+list_access(Indexes, List, Z) :-
+     Indexes = [Head|Tail],
+     List = [LHead|_LTail],
+     Head = 0,
+     list_access(Tail, LHead, Z).
+
+list_access(Indexes, [], nil):-
+     Indexes \= [].
 
 :- begin_tests(list_access).
 test(index_1, all(Z = [b])) :-
@@ -106,7 +143,18 @@ test(index_0_1, all(Z = [nil])) :-
 % are not processed.
 % The count will be the number of leaves in the tree corresponding to the
 % list structure of List.
-count_non_pairs(List, NNonPairs):- 'TODO'(List, NNonPairs).
+
+count_non_pairs([], 1).
+count_non_pairs(List, NNonPairs):-
+     List = [Head|Tail],
+     Head \= [_|_],
+     count_non_pairs(Tail, Ans),
+     NNonPairs is Ans + 1.
+count_non_pairs(List, NNonPairs) :-
+     List = [Head|_Tail],
+     Head = [_|_],
+     count_non_pairs(Head, Ans),
+     NNonPairs is Ans + 1.
 
 :- begin_tests(count_non_pairs).
 test(empty, nondet) :-
@@ -131,7 +179,12 @@ test(complex_fail, fail) :-
 % which is divisible by N.  Successive Int's are returned on backtracking
 % in the order they occur within list Ints.
 % Hint: use member/2 and the mod operator
-divisible_by(Ints, N, Int) :- 'TODO'(Ints, N, Int).
+
+divisible_by(Ints, N, Int):-
+     member(X, Ints),
+     0 is X mod N,
+     Int = X.
+
 
 :- begin_tests(divisible_by).
 test(empty, fail) :-
@@ -151,7 +204,32 @@ test(none_divisible_by_3, fail) :-
 %   If A and B are Prolog regex's, then so is conc(A, B) representing AB.
 %   If A and B are Prolog regex's, then so is alt(A, B) representing A|B.
 %   If A is a Prolog regex, then so is kleene(A), representing A*.
-re_match(Re, List) :- 'TODO'(Re, List).
+
+re_match(Sym, [HSym|_]):-
+     Sym = HSym.
+
+re_match(conc(Re1, Re2), List):-
+     List = [Head|Tail],
+     re_match(Re1, [Head]),
+     Tail = [Heads|Tails],
+     re_match(Re2, [Heads]),
+     Tails = [].
+
+re_match(alt(Re1, _Re2), List):-
+     List = [Head|_Tail],
+     re_match(Re1, [Head]).
+
+
+re_match(alt(_Re1, Re2), List):-
+     List = [Head|_Tail],
+     re_match(Re2, [Head]).
+
+re_match(kleene(_Re), []).
+re_match(kleene(Re), List):-
+     List = [Head|Tail],
+     re_match(Re, [Head]),
+     re_match(kleene(Re), Tail).
+
 
 :- begin_tests(re_match).
 test(single) :-
@@ -210,7 +288,18 @@ test(complex_empty, nondet) :-
 % disjunction (represented using the infix \/ operator) of literals with
 % the prefix ~ operator used to indicate negative literals.
 :- op(200, fx, ~). %declare ~ operator
-clausal_form(PrologRules, Form) :- 'TODO'(PrologRules, Form).
+
+clausal_form([Rule|Rules], Form) :- %List of rules specified non-empty
+    rule_clause(Rule, RuleClause),
+    clausal_form(Rules, RuleClause, Form).
+
+clausal_form([], AccForm, AccForm).
+clausal_form([Rule|Rules], AccForm, Form) :-
+    rule_clause(Rule, RuleClause),
+    clausal_form(Rules, AccForm /\ RuleClause, Form).
+
+rule_clause(atom(A), A).
+
 
 :- begin_tests(clausal_form).
 test(single_head, all(Z = [p(a, b)])) :-
@@ -233,4 +322,3 @@ test(complex, all(Z = [Clause1 /\ Clause2 /\ Clause3 /\ Clause4])) :-
     Clause4 = append([A|As], Ys, [A|Zs]) \/ ~append(As, Ys, Zs),
     clausal_form([Rule1, Rule2, Rule3, Rule4], Z).
 :- end_tests(clausal_form).
-

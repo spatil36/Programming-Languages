@@ -1,6 +1,12 @@
-Name:		XXX
-B-Number:	XXX
-Email:		XXX
+Name:		Shubham Dilip Patil
+B-Number:	B00957264
+Email:		spatil36@binghamton.edu
 
-Add text here as needed.
 
+//Add text here as needed.
+
+The program file is prj3-sol.pro, with and successfull execution.
+The file can be run in 'SWI-Prolog (threaded, 64 bits, version 8.4.3)', by defining the path of file and using the command :- 
+
+% load required solution file
+?- ['prj3-sol.pro'].
