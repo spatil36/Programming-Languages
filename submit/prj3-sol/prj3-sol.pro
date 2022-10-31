@@ -144,17 +144,24 @@ test(index_0_1, all(Z = [nil])) :-
 % The count will be the number of leaves in the tree corresponding to the
 % list structure of List.
 
-count_non_pairs([], 1).
 count_non_pairs(List, NNonPairs):-
-     List = [Head|Tail],
-     Head \= [_|_],
-     count_non_pairs(Tail, Ans),
-     NNonPairs is Ans + 1.
-count_non_pairs(List, NNonPairs) :-
-     List = [Head|_Tail],
-     Head = [_|_],
-     count_non_pairs(Head, Ans),
-     NNonPairs is Ans + 1.
+     count_non_pairs(List, 1, NNonPairs).
+
+count_non_pairs([], NNonPairs, NNonPairs).
+
+
+count_non_pairs(List, AccCntNp, NNonPairs) :-
+     List = [Head|Tail],
+     Head = [_|_],
+     count_non_pairs(Head, 1, Res),
+     count_non_pairs(Tail, AccCntNp, Res1),
+     NNonPairs is Res + Res1.
+
+count_non_pairs(List, AccCntNp, NNonPairs):-
+     List = [Head|Tail],
+     Head \= [_|_],
+     Acc1CntNp is AccCntNp + 1,
+     count_non_pairs(Tail, Acc1CntNp, NNonPairs).
 
 :- begin_tests(count_non_pairs).
 test(empty, nondet) :-
