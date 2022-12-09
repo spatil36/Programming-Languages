@@ -10,7 +10,7 @@
 %% enable all tests before submission.
 %% the skeleton file is distributed with all tests are deactivated
 
--if(false).  %move this down to just before -endif when project completed
+%move this down to just before -endif when project completed
 -define(test_dept_employees1, enabled).
 -define(test_dept_employees2, enabled).
 -define(test_dept_employees3, enabled).
@@ -25,6 +25,7 @@
 -define(test_employees_client_no_sort_mutate, enabled).
 -define(test_employees_client_with_sort_mutate, enabled).
 -define(test_employees_client_hot_reload, enabled).
+-if(false).
 -endif.
 
 %% Tracing Tests: set trace_level as desired.
@@ -128,7 +129,10 @@ upsert_employees() -> [ ?Tom1, ?Jane1, ?Joe1 ].
 % having dept = Dept.
 % Restriction: must be implemented using recursion without using any library 
 % functions.
-dept_employees1(Dept, Employees) -> 'TODO'.
+dept_employees1(Dept, []) -> [];
+dept_employees1(Dept, [EHead|ETail]) -> if Dept == EHead#employee.dept -> [EHead | dept_employees1(Dept, ETail)];
+                                        true -> dept_employees1(Dept, ETail) end.
+
 
 dept_employees_test_specs() -> 
     Es = ?Employees,
@@ -151,7 +155,8 @@ dept_employees1_test_() ->
 % dept_employees2(Dept, Employees): return sub-list of Employees
 % having dept = Dept.
 % Restriction: must be implemented using a single call to lists:filter().
-dept_employees2(Dept, Employees) -> 'TODO'.
+dept_employees2(Dept, Employees) -> lists:filter(employee_has_dept(Dept), Employees);
+dept_employees2(Dept, []) -> [].
 
 -ifdef(test_dept_employees2).
 dept_employees2_test_() ->
@@ -164,7 +169,8 @@ dept_employees2_test_() ->
 % dept_employees3(Dept, Employees): return sub-list of Employees
 % having dept = Dept.
 % Restriction: must be implemented using a list comprehension.
-dept_employees3(Dept, Employees) -> 'TODO'.
+dept_employees3(Dept, Employees) -> [EHead || EHead <- Employees, Dept == EHead#employee.dept];
+dept_employees3(Dept, []) -> [].
 
 -ifdef(test_dept_employees3).
 dept_employees3_test_() ->
@@ -177,7 +183,7 @@ dept_employees3_test_() ->
 % Given a list Employees of employees, return sublist of Employees
 % with employee with name=Name removed.  It is ok if Name does not exist.
 % Hint: use a list comprehension 
-delete_employee(Name, Employees) -> 'TODO'.
+delete_employee(Name, Employees) -> [EHead || EHead <- Employees, Name =/= EHead#employee.name].
 
 %% returns list of pairs: { Args, Result }, where Args is list of
 %% arguments to function and Result should be the value returned
@@ -206,7 +212,9 @@ delete_employee_test_() ->
 % an employee E1 with E1.name == E.name, then return Employees
 % with E1 replaced by E, otherwise return Employees with
 % [E] appended.
-upsert_employee(E, Employees) -> 'TODO'.
+upsert_employee(E, []) -> [E];
+upsert_employee(E, [Ehead|Etail]) -> if E#employee.name == Ehead#employee.name -> [E | Etail];
+                                    true -> [Ehead | upsert_employee(E, Etail)] end.
 
 
 %% returns list of pairs: { Args, Result }, where Args is list of
@@ -243,7 +251,7 @@ upsert_employee_test_() ->
 % for which all P in Preds return true.
 % Restriction: may not use recursion.
 % Hint: consider using a list comprehension with lists:all/2.
-find_employees(Preds, Employees) -> 'TODO'.
+find_employees(Preds, Employees) -> [Ehead || Ehead <- Employees, lists:all(fun(P) -> P(Ehead) end, Preds)].
 
 find_employees_test_specs() -> 
   Es = ?Employees,
@@ -296,7 +304,22 @@ find_employees_test_() ->
 %   _:                    return an error-result with a suitable ErrString.
 % Hint: use io_lib:format(Format, Args) to build suitable error strings,
 % for example: lists:flatten(io_lib:format("bad Req ~p", [Req]))
-employees_req(Req, Employees) -> 'TODO'.
+employees_req(Req, Employees) -> case Req of
+                                    { delete, Name } -> 
+                                            {ok, void, delete_employee(Name, Employees)};
+                                    { dump } ->
+                                            {ok, Employees, Employees};
+                                    { find, Preds } ->
+                                            {ok, find_employees(Preds, Employees), Employees};
+                                    { read, Name } -> case find_employees([employee_has_name(Name)], Employees) of
+                                                            [] -> {err, lists:flatten(io_lib:format("Person ~w not found", [Name])), Employees};
+                                                            Other -> [H|_] = find_employees([employee_has_name(Name)], Employees),
+                                                                     {ok,H, Employees} end;
+                                    { upsert, Employee} ->
+                                            {ok, void, upsert_employee(Employee, Employees)};
+                                    Other ->
+                                            {err, lists:flatten(io_lib:format("bad request ~p", [Req])), Employees}        
+                                end.
 
 %% map upsert_employee_test_specs into args-result pairs suitable
 %% for employees_req({upsert, _}, ...).
@@ -350,7 +373,13 @@ employees_req_test_() ->
 % { sort } which should return { ok, void, SortedEmployees }
 % where SortedEmployees is Employees sorted in ascending order by name.
 % Hint: use lists:sort/2 to sort, delegate all non-sort Fns to employees_req/2.
-employees_req_with_sort(Req, Employees) -> 'TODO'.
+
+employees_req_with_sort(Req, Employees) -> case Req of
+                                             { sort } -> 
+                                                    {ok, void, lists:sort(fun(A, B) -> A#employee.name < B#employee.name end, Employees)};
+                                             Other -> 
+                                                    employees_req(Req, Employees)
+                                            end.
 
 employees_req_with_sort_test_specs() ->
     [ { sort, [{sort}, ?Employees], { ok, void, ?SortedEmployees } } ] ++
@@ -381,7 +410,7 @@ employees_req_with_sort_test_() ->
 % The server should accept messages of the form { Pid, Req } where Pid
 % is the client's PID.  The action taken by the server depends on Req:
 % { stop }:            Terminate the server after sending a { ok, stopped}
-%		       response to the client.   
+%		                    response to the client.   
 % { new_fn, Fn1 }:     Continue server with processing function
 %                      Fn replaced by Fn1 after sending a {ok, void} 
 %                      response to the client. 
@@ -396,15 +425,38 @@ employees_req_with_sort_test_() ->
 % The actual messages returned to the client should always include the
 % server's PID, so they look like { self(), Response } where Response is
 % the response described above.
-start_employees_server(Employees, Fn) -> 'TODO'.
+start_employees_server(Employees, Fn) -> register(emps, spawn(prj5_sol, employees_server, [Employees, Fn])),
+                                         whereis(emps).
+
+employees_server(Employees, Fn) -> 
+                                receive
+                                    {Client, {stop}} -> Client ! {ok, stopped};
+                                    {Client, {new_fn, Fn1} } -> 
+                                                Client ! {self(), {ok, void}},
+                                                employees_server(Employees, Fn1);
+                                    {Client, Req} -> 
+                                                {Status, Result, Employees1} = apply(Fn, [Req, Employees]),
+                                                        Client ! {self(), {Status, Result}},
+                                                        employees_server(Employees1, Fn)
+                                end.
 
 % stop previously started server with registered ID emps.
 % should return {ok, stopped}.
-stop_employees_server() -> 'TODO'.
+stop_employees_server() ->
+  emps ! {self(), {stop}},
+  receive
+    {Status, Response} -> {Status, Response}
+  end.
 
 % set request Req to server registered under ID emps and return 
 % Result from server.
-employees_client(Req) -> 'TODO'.
+employees_client(Req) -> 
+%  ServerPid = whereis(emps),
+  emps ! {self(), Req},
+  receive
+    {_ServerPid, {Status, Result}} ->
+        {Status, Result}
+end.
 
 
 %% map employees_req test to a employees_client test
